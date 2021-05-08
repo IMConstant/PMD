@@ -52,6 +52,10 @@ class Application {
     CameraUpdateInfo cameraUpdateInfo;
     Camera mMainCamera;
 
+    Mesh<VertexComponentsColored> m_mesh;
+    bool m_mesh_need_reload;
+    std::string m_next_mesh_load_file;
+
 public:
     Application();
     virtual ~Application();
@@ -73,6 +77,11 @@ public:
 
     void imguiInit();
 
+    void reloadMesh(std::string const &fileName) {
+        m_mesh_need_reload = true;
+        m_next_mesh_load_file = fileName;
+    }
+
 protected:
     void mousePressEvent(int button) {
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
@@ -89,11 +98,12 @@ protected:
     void mouseMoveEvent(glm::vec2 pos) {
         cameraUpdateInfo.endPosition = pos;
 
-        if (Input::mouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
-            cameraUpdateInfo.rotate(mMainCamera);
-        }
-        else if (Input::mouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT)) {
-            cameraUpdateInfo.translate(mMainCamera);
+        if (!ImGui::IsAnyWindowFocused()) {
+            if (Input::mouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT)) {
+                cameraUpdateInfo.rotate(mMainCamera);
+            } else if (Input::mouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT)) {
+                cameraUpdateInfo.translate(mMainCamera);
+            }
         }
 
         cameraUpdateInfo.beginPosition = cameraUpdateInfo.endPosition;

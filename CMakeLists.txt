@@ -9,7 +9,24 @@ add_subdirectory(./dependencies/glfw)
 add_subdirectory(./dependencies/imgui/imgui-master)
 #add_subdirectory(./dependencies/CGAL-5.2.1)
 
-add_executable(MeshSimplification src/main.cpp src/Application.cpp src/Application.h src/Mesh.cpp src/Mesh.h src/Shader.h src/Shader.cpp src/Simplify.h src/Simplify.cpp src/Input.h src/Input.cpp src/OBJReader.h)
+add_executable(MeshSimplification
+        src/main.cpp
+        src/Application.cpp
+        src/Application.h
+        src/Mesh.cpp
+        src/Mesh.h
+        src/Shader.h
+        src/Shader.cpp
+        src/Simplify.h
+        src/Simplify.cpp
+        src/Input.h
+        src/Input.cpp
+        src/OBJReader.h
+        src/GUI.h
+        src/GUI.cpp
+        src/FileSystem.h
+        src/FileSystem.cpp
+        common/string_func.h)
 target_include_directories(MeshSimplification PUBLIC ./dependencies/glew/include
         ./dependencies/glfw/include
         ./dependencies/glm

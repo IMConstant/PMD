@@ -1,4 +1,5 @@
 #include "Application.h"
+#include "GUI.h"
 
 
 void CameraUpdateInfo::rotate(Camera &camera) {
@@ -75,17 +76,22 @@ Application::Application() {
     mMainCamera.lookPosition = {0.f, 0.f, 0.f};
 
     imguiInit();
+
+    m_mesh.load_from_file("./elevator.obj");
+    m_mesh.calculate_normals();
+    m_mesh_need_reload = false;
 }
 
 void Application::setCallBacks() {
     glfwSetMouseButtonCallback(m_window, [](GLFWwindow *window, int button, int action, int mods) {
         auto *app = Application::getInstance();
 
-        if (action == GLFW_PRESS) {
-            app->mousePressEvent(button);
-        }
-        else if (action == GLFW_RELEASE) {
-            app->mouseReleaseEvent(button);
+        if (!ImGui::IsAnyWindowFocused()) {
+            if (action == GLFW_PRESS) {
+                app->mousePressEvent(button);
+            } else if (action == GLFW_RELEASE) {
+                app->mouseReleaseEvent(button);
+            }
         }
     });
 
@@ -94,7 +100,9 @@ void Application::setCallBacks() {
     });
 
     glfwSetScrollCallback(m_window, [](GLFWwindow *window, double x, double y) {
-        Application::getInstance()->mouseWheelEvent(y);
+        if (!ImGui::IsAnyWindowFocused()) {
+            Application::getInstance()->mouseWheelEvent(y);
+        }
     });
 }
 
@@ -130,90 +138,8 @@ void Application::run() {
 
     shader.bind();
 
-    Mesh<VertexComponentsColored> my_mesh;
-    my_mesh.load_from_file("./hall.obj");
-    my_mesh.calculate_normals();
-
-    my_mesh.simplify(0.2f);
-
-    my_mesh.calculate_normals();
-
-    float mesh_area = my_mesh.area();
-    float mesh_volume = my_mesh.volume();
-
-    Surface_mesh mesh;
-    mesh.reserve(2000, 2000, 2000);
-
-    std::ifstream fin("./robot.obj");
-
-    std::vector<Point_3> obj_vertices;
-    std::vector<std::vector<std::size_t>> obj_faces;
-
-    CGAL::read_OBJ(fin, obj_vertices, obj_faces);
-
-    CGAL::Polygon_mesh_processing::polygon_soup_to_polygon_mesh(obj_vertices, obj_faces, mesh);
-
-    CGAL::Polygon_mesh_processing::triangulate_faces(mesh);
-
-    Simplify::vertices.reserve(mesh.num_vertices());
-    Simplify::triangles.reserve(mesh.num_faces());
-
-    for (auto vertex : mesh.points()) {
-        Simplify::Vertex v;
-        v.p = { vertex.x(), vertex.y(), -vertex.z() };
-        Simplify::vertices.push_back(v);
-    }
-
-    for (auto face_descriptor : mesh.faces()) {
-        std::vector<uint32_t> vertex_face_indices;
-
-        for (auto vertex_descriptor : CGAL::vertices_around_face(mesh.halfedge(face_descriptor), mesh)) {
-            vertex_face_indices.push_back(static_cast<uint>(vertex_descriptor));
-        }
-
-        Simplify::Triangle t;
-
-        t.v[0] = vertex_face_indices.at(0);
-        t.v[1] = vertex_face_indices.at(1);
-        t.v[2] = vertex_face_indices.at(2);
-
-        Simplify::triangles.push_back(t);
-    }
-
-    //Simplify::simplify_mesh<>(nullptr, 3000, 7);
-
-
-    std::vector<glm::vec3> vertices;
-
-    for (auto vertex : Simplify::vertices) {
-        vertices.push_back(vertex.p);
-    }
-
-    std::vector<glm::vec3> normals(vertices.size(), glm::vec3(0.0f, 0.0f, 0.0f));
-
-    for (auto face : Simplify::triangles) {
-        glm::vec3 A = vertices.at(face.v[1]) - vertices.at(face.v[0]);
-        glm::vec3 B = vertices.at(face.v[2]) - vertices.at(face.v[0]);
-
-        glm::vec3 N = glm::normalize(glm::cross(A, B));
-
-        normals.at(face.v[0]) += N;
-        normals.at(face.v[1]) += N;
-        normals.at(face.v[2]) += N;
-    }
-
-    for (auto &normal : normals) {
-        normal = glm::normalize(normal);
-    }
-
-    std::vector<uint32_t> indices;
-    indices.reserve(3 * Simplify::triangles.size());
-
-    for (auto triangle : Simplify::triangles) {
-        indices.push_back(triangle.v[0]);
-        indices.push_back(triangle.v[1]);
-        indices.push_back(triangle.v[2]);
-    }
+    float mesh_area = m_mesh.area();
+    float mesh_volume = m_mesh.volume();
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
@@ -238,31 +164,69 @@ void Application::run() {
     glEnableVertexAttribArray(position_attribute);
 
     glBindBuffer(GL_ARRAY_BUFFER, vertexBufferDesc);
-    glBufferData(GL_ARRAY_BUFFER, my_mesh.vertices().size() * sizeof(decltype(my_mesh)::VertexType),
-                 reinterpret_cast<unsigned char const *>(my_mesh.vertices().data()) + VTABLE_OFFSET, GL_STATIC_DRAW);
-    glVertexAttribPointer(position_attribute, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(my_mesh)::VertexType), nullptr);
+    glBufferData(GL_ARRAY_BUFFER, m_mesh.vertices().size() * sizeof(decltype(m_mesh)::VertexType),
+                 reinterpret_cast<unsigned char const *>(m_mesh.vertices().data()) + VTABLE_OFFSET, GL_STATIC_DRAW);
+    glVertexAttribPointer(position_attribute, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(m_mesh)::VertexType), nullptr);
 
     glGenBuffers(1, &normalBufferDesc);
     glEnableVertexAttribArray(normal_attribute);
 
     glBindBuffer(GL_ARRAY_BUFFER, normalBufferDesc);
-    glBufferData(GL_ARRAY_BUFFER, my_mesh.vertices().size() * sizeof(decltype(my_mesh)::VertexType),
-                 reinterpret_cast<unsigned char const *>(my_mesh.vertices().data()) + VTABLE_OFFSET + sizeof(glm::vec3), GL_STATIC_DRAW);
-    glVertexAttribPointer(normal_attribute, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(my_mesh)::VertexType), nullptr);
+    glBufferData(GL_ARRAY_BUFFER, m_mesh.vertices().size() * sizeof(decltype(m_mesh)::VertexType),
+                 reinterpret_cast<unsigned char const *>(m_mesh.vertices().data()) + VTABLE_OFFSET + sizeof(glm::vec3), GL_STATIC_DRAW);
+    glVertexAttribPointer(normal_attribute, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(m_mesh)::VertexType), nullptr);
 
     glGenBuffers(1, &colorBufferDesc);
     glEnableVertexAttribArray(color_attribute);
 
     glBindBuffer(GL_ARRAY_BUFFER, colorBufferDesc);
-    glBufferData(GL_ARRAY_BUFFER, my_mesh.vertices().size() * sizeof(decltype(my_mesh)::VertexType),
-                 reinterpret_cast<unsigned char const *>(my_mesh.vertices().data()) + VTABLE_OFFSET + 2 * sizeof(glm::vec3), GL_STATIC_DRAW);
-    glVertexAttribPointer(color_attribute, 4, GL_FLOAT, GL_FALSE, sizeof(decltype(my_mesh)::VertexType), nullptr);
+    glBufferData(GL_ARRAY_BUFFER, m_mesh.vertices().size() * sizeof(decltype(m_mesh)::VertexType),
+                 reinterpret_cast<unsigned char const *>(m_mesh.vertices().data()) + VTABLE_OFFSET + 2 * sizeof(glm::vec3), GL_STATIC_DRAW);
+    glVertexAttribPointer(color_attribute, 4, GL_FLOAT, GL_FALSE, sizeof(decltype(m_mesh)::VertexType), nullptr);
 
     float angle = 0.0f;
 
     while (!glfwWindowShouldClose(m_window)) {
         glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+        if (m_mesh_need_reload) {
+            m_mesh.load_from_file(m_next_mesh_load_file);
+            m_mesh.calculate_normals();
+
+            glDisableVertexAttribArray(position_attribute);
+            glDisableVertexAttribArray(normal_attribute);
+            glDisableVertexAttribArray(color_attribute);
+            glDeleteBuffers(1, &vertexBufferDesc);
+            glDeleteBuffers(1, &normalBufferDesc);
+            glDeleteBuffers(1, &colorBufferDesc);
+
+            glGenBuffers(1, &vertexBufferDesc);
+            glEnableVertexAttribArray(position_attribute);
+
+            glBindBuffer(GL_ARRAY_BUFFER, vertexBufferDesc);
+            glBufferData(GL_ARRAY_BUFFER, m_mesh.vertices().size() * sizeof(decltype(m_mesh)::VertexType),
+                         reinterpret_cast<unsigned char const *>(m_mesh.vertices().data()) + VTABLE_OFFSET, GL_STATIC_DRAW);
+            glVertexAttribPointer(position_attribute, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(m_mesh)::VertexType), nullptr);
+
+            glGenBuffers(1, &normalBufferDesc);
+            glEnableVertexAttribArray(normal_attribute);
+
+            glBindBuffer(GL_ARRAY_BUFFER, normalBufferDesc);
+            glBufferData(GL_ARRAY_BUFFER, m_mesh.vertices().size() * sizeof(decltype(m_mesh)::VertexType),
+                         reinterpret_cast<unsigned char const *>(m_mesh.vertices().data()) + VTABLE_OFFSET + sizeof(glm::vec3), GL_STATIC_DRAW);
+            glVertexAttribPointer(normal_attribute, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(m_mesh)::VertexType), nullptr);
+
+            glGenBuffers(1, &colorBufferDesc);
+            glEnableVertexAttribArray(color_attribute);
+
+            glBindBuffer(GL_ARRAY_BUFFER, colorBufferDesc);
+            glBufferData(GL_ARRAY_BUFFER, m_mesh.vertices().size() * sizeof(decltype(m_mesh)::VertexType),
+                         reinterpret_cast<unsigned char const *>(m_mesh.vertices().data()) + VTABLE_OFFSET + 2 * sizeof(glm::vec3), GL_STATIC_DRAW);
+            glVertexAttribPointer(color_attribute, 4, GL_FLOAT, GL_FALSE, sizeof(decltype(m_mesh)::VertexType), nullptr);
+
+            m_mesh_need_reload = false;
+        }
 
         glfwPollEvents();
 
@@ -271,11 +235,33 @@ void Application::run() {
         ImGui::NewFrame();
 
         {
+            ImGui::ShowDemoWindow();
+
+            if (ImGui::BeginMainMenuBar()) {
+                if (ImGui::BeginMenu("File")) {
+                    if (ImGui::MenuItem("Open")) {
+                        GUI::showFileSystemWindow = true;
+                    }
+
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("View")) {
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Tools")) {
+                    ImGui::EndMenu();
+                }
+
+                ImGui::EndMainMenuBar();
+            }
+
+            GUI::createFileSystemWindow();
+
             ImGui::Begin("MainWindow");
             ImGui::ColorEdit3("clear color", reinterpret_cast<float *>(&clearColor));
             ImGui::SliderFloat3("camera position", reinterpret_cast<float *>(&mMainCamera.position), -20.0f, 20.0f);
-            ImGui::Text("Vertices: %u", my_mesh.vertices().size());
-            ImGui::Text("Faces: %u", my_mesh.faces().size());
+            ImGui::Text("Vertices: %u", m_mesh.vertices().size());
+            ImGui::Text("Faces: %u", m_mesh.faces().size());
             ImGui::Text("Area: %f", mesh_area);
             ImGui::Text("Volume: %f", mesh_volume);
 
@@ -314,7 +300,7 @@ void Application::run() {
 
         glUniformMatrix4fv(glGetUniformLocation(shader.getId(), "u_model_view_projection"), 1, GL_FALSE, glm::value_ptr(model_view_projection));
 
-        glDrawElements(GL_TRIANGLES, my_mesh.faces().size() * 3, GL_UNSIGNED_INT, my_mesh.faces().data());
+        glDrawElements(GL_TRIANGLES, m_mesh.faces().size() * 3, GL_UNSIGNED_INT, m_mesh.faces().data());
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

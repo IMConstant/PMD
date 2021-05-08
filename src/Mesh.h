@@ -130,6 +130,9 @@ public:
         layout.position.offset = 0;
         layout.color.offset = 24;
 
+        m_vertices.clear();
+        m_faces.clear();
+
         OBJReader::read(fileName, m_vertices, m_faces, layout);
     }
 
