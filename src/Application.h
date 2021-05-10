@@ -17,7 +17,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "Mesh.h"
+#include "RenderMesh.h"
 #include "Shader.h"
 #include "Simplify.h"
 
@@ -52,7 +52,7 @@ class Application {
     CameraUpdateInfo cameraUpdateInfo;
     Camera mMainCamera;
 
-    Mesh<VertexComponentsColored> m_mesh;
+    RenderMesh<VertexComponentsColored> m_mesh;
     bool m_mesh_need_reload;
     std::string m_next_mesh_load_file;
 

@@ -1,13 +1,6 @@
 #ifndef MESHSIMPLIFICATION_MESH_H
 #define MESHSIMPLIFICATION_MESH_H
 
-#include <CGAL/Simple_cartesian.h>
-// #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Surface_mesh.h>
-#include <CGAL/Polygon_mesh_processing/triangulate_faces.h>
-#include <CGAL/IO/OBJ_reader.h>
-#include <CGAL/Polygon_mesh_processing/polygon_soup_to_polygon_mesh.h>
-
 #include <type_traits>
 #include <glm/glm.hpp>
 #include <iostream>
@@ -16,10 +9,7 @@
 #include "Simplify.h"
 #include "OBJReader.h"
 
-typedef CGAL::Simple_cartesian<float>                Kernel;
-typedef Kernel::Point_3                              Point_3;
-typedef CGAL::Surface_mesh<Point_3>                  Surface_mesh;
-
+#define VTABLE_OFFSET 8
 
 using uchar = unsigned char;
 using uint = unsigned int;
@@ -63,6 +53,7 @@ struct UVVertexComponent : public VertexBaseComponents {
 
 struct VertexComponentsColored : public VertexBaseComponents {
     glm::vec4 color;
+    glm::vec2 uv;
 
     void interpolate(VertexComponents *out, VertexComponents const &v0, VertexComponents const &v1, float t) const override {
         VertexBaseComponents::interpolate(out, v0, v1, t);
@@ -87,6 +78,10 @@ struct Face {
     uint v0;
     uint v1;
     uint v2;
+
+    glm::vec2 uv0;
+    glm::vec2 uv1;
+    glm::vec2 uv2;
 };
 
 
@@ -106,6 +101,7 @@ namespace Simplify {
 
 template <class TVertexComponents>
 class Mesh {
+protected:
     std::vector<Vertex<TVertexComponents>> m_vertices;
     std::vector<Face> m_faces;
 
@@ -124,11 +120,13 @@ public:
     Mesh() {
         Mesh<TVertexComponents>::layoutDefault.position.offset = static_cast<uint>(offsetof(TVertexComponents, position));
     }
+    virtual ~Mesh() {}
 
-    void load_from_file(std::string const &fileName) {
+    virtual void load_from_file(std::string const &fileName) {
         OBJReader::Layout layout;
         layout.position.offset = 0;
         layout.color.offset = 24;
+        layout.uv.offset = 40;
 
         m_vertices.clear();
         m_faces.clear();
@@ -166,8 +164,8 @@ public:
         return _volume;
     }
 
-    void simplify(float p = 0.5f);
-    void simplify(uint verticesFinalCount);
+    virtual void simplify(float p = 0.5f);
+    virtual void simplify(uint verticesFinalCount);
 
     void calculate_normals();
 

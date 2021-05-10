@@ -26,7 +26,16 @@ add_executable(MeshSimplification
         src/GUI.cpp
         src/FileSystem.h
         src/FileSystem.cpp
-        common/string_func.h)
+        src/RenderMesh.h
+        src/RenderMesh.cpp
+        common/string_func.h
+        src/gl/Buffer.cpp
+        src/gl/Buffer.h
+        src/OBJReader.cpp
+        src/gl/Texture.cpp
+        src/gl/Texture.h
+        dependencies/stb_image/stb_image.h
+        dependencies/stb_image/stb_image.cpp)
 target_include_directories(MeshSimplification PUBLIC ./dependencies/glew/include
         ./dependencies/glfw/include
         ./dependencies/glm

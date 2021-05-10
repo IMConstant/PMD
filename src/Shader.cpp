@@ -15,7 +15,8 @@ Shader::Shader(const std::string &vertex_source, const std::string &fragment_sou
     glCompileShader(vid);
     glGetShaderiv(vid, GL_COMPILE_STATUS, &vrez);
 
-    printf("%s\n", glGetString(GL_VERSION));
+    printf("OPENGL VERSION: %s\n", glGetString(GL_VERSION));
+    printf("SHADING LANGUAGE VERSION: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
     if (vrez == GL_FALSE)
         std::cerr << "Vertex shader compilation error" << std::endl;

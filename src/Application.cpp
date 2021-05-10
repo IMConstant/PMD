@@ -77,7 +77,7 @@ Application::Application() {
 
     imguiInit();
 
-    m_mesh.load_from_file("./elevator.obj");
+    m_mesh.load_from_file("./models/house/house.obj");
     m_mesh.calculate_normals();
     m_mesh_need_reload = false;
 }
@@ -150,40 +150,6 @@ void Application::run() {
 
     glm::vec3 clearColor = {0.1f, 0.1f, 0.1f};
 
-    GLuint vertexBufferDesc{0}, normalBufferDesc, indexBufferDesc, colorBufferDesc;
-
-    GLuint position_attribute = shader.attributeLocation("position");
-    GLuint normal_attribute = shader.attributeLocation("normal");
-    GLuint color_attribute = shader.attributeLocation("color");
-
-
-    uint VTABLE_OFFSET = sizeof(unsigned long);
-
-
-    glGenBuffers(1, &vertexBufferDesc);
-    glEnableVertexAttribArray(position_attribute);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBufferDesc);
-    glBufferData(GL_ARRAY_BUFFER, m_mesh.vertices().size() * sizeof(decltype(m_mesh)::VertexType),
-                 reinterpret_cast<unsigned char const *>(m_mesh.vertices().data()) + VTABLE_OFFSET, GL_STATIC_DRAW);
-    glVertexAttribPointer(position_attribute, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(m_mesh)::VertexType), nullptr);
-
-    glGenBuffers(1, &normalBufferDesc);
-    glEnableVertexAttribArray(normal_attribute);
-
-    glBindBuffer(GL_ARRAY_BUFFER, normalBufferDesc);
-    glBufferData(GL_ARRAY_BUFFER, m_mesh.vertices().size() * sizeof(decltype(m_mesh)::VertexType),
-                 reinterpret_cast<unsigned char const *>(m_mesh.vertices().data()) + VTABLE_OFFSET + sizeof(glm::vec3), GL_STATIC_DRAW);
-    glVertexAttribPointer(normal_attribute, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(m_mesh)::VertexType), nullptr);
-
-    glGenBuffers(1, &colorBufferDesc);
-    glEnableVertexAttribArray(color_attribute);
-
-    glBindBuffer(GL_ARRAY_BUFFER, colorBufferDesc);
-    glBufferData(GL_ARRAY_BUFFER, m_mesh.vertices().size() * sizeof(decltype(m_mesh)::VertexType),
-                 reinterpret_cast<unsigned char const *>(m_mesh.vertices().data()) + VTABLE_OFFSET + 2 * sizeof(glm::vec3), GL_STATIC_DRAW);
-    glVertexAttribPointer(color_attribute, 4, GL_FLOAT, GL_FALSE, sizeof(decltype(m_mesh)::VertexType), nullptr);
-
     float angle = 0.0f;
 
     while (!glfwWindowShouldClose(m_window)) {
@@ -193,37 +159,6 @@ void Application::run() {
         if (m_mesh_need_reload) {
             m_mesh.load_from_file(m_next_mesh_load_file);
             m_mesh.calculate_normals();
-
-            glDisableVertexAttribArray(position_attribute);
-            glDisableVertexAttribArray(normal_attribute);
-            glDisableVertexAttribArray(color_attribute);
-            glDeleteBuffers(1, &vertexBufferDesc);
-            glDeleteBuffers(1, &normalBufferDesc);
-            glDeleteBuffers(1, &colorBufferDesc);
-
-            glGenBuffers(1, &vertexBufferDesc);
-            glEnableVertexAttribArray(position_attribute);
-
-            glBindBuffer(GL_ARRAY_BUFFER, vertexBufferDesc);
-            glBufferData(GL_ARRAY_BUFFER, m_mesh.vertices().size() * sizeof(decltype(m_mesh)::VertexType),
-                         reinterpret_cast<unsigned char const *>(m_mesh.vertices().data()) + VTABLE_OFFSET, GL_STATIC_DRAW);
-            glVertexAttribPointer(position_attribute, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(m_mesh)::VertexType), nullptr);
-
-            glGenBuffers(1, &normalBufferDesc);
-            glEnableVertexAttribArray(normal_attribute);
-
-            glBindBuffer(GL_ARRAY_BUFFER, normalBufferDesc);
-            glBufferData(GL_ARRAY_BUFFER, m_mesh.vertices().size() * sizeof(decltype(m_mesh)::VertexType),
-                         reinterpret_cast<unsigned char const *>(m_mesh.vertices().data()) + VTABLE_OFFSET + sizeof(glm::vec3), GL_STATIC_DRAW);
-            glVertexAttribPointer(normal_attribute, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(m_mesh)::VertexType), nullptr);
-
-            glGenBuffers(1, &colorBufferDesc);
-            glEnableVertexAttribArray(color_attribute);
-
-            glBindBuffer(GL_ARRAY_BUFFER, colorBufferDesc);
-            glBufferData(GL_ARRAY_BUFFER, m_mesh.vertices().size() * sizeof(decltype(m_mesh)::VertexType),
-                         reinterpret_cast<unsigned char const *>(m_mesh.vertices().data()) + VTABLE_OFFSET + 2 * sizeof(glm::vec3), GL_STATIC_DRAW);
-            glVertexAttribPointer(color_attribute, 4, GL_FLOAT, GL_FALSE, sizeof(decltype(m_mesh)::VertexType), nullptr);
 
             m_mesh_need_reload = false;
         }
@@ -291,28 +226,70 @@ void Application::run() {
 
         angle += 0.01f;
 
-        glm::mat4 model = glm::mat4(1.0f);
+        glm::mat4 model = glm::translate(model, glm::vec3(0, -13, -197));
         //model = glm::rotate(model, angle, glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 view = glm::lookAt(mMainCamera.position, mMainCamera.lookPosition, glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 projection = glm::perspective(glm::radians(90.0f), width / static_cast<float>(height), 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(90.0f), width / static_cast<float>(height), 0.1f, 10000.0f);
 
         glm::mat4 model_view_projection = projection * view * model;
 
         glUniformMatrix4fv(glGetUniformLocation(shader.getId(), "u_model_view_projection"), 1, GL_FALSE, glm::value_ptr(model_view_projection));
 
-        glDrawElements(GL_TRIANGLES, m_mesh.faces().size() * 3, GL_UNSIGNED_INT, m_mesh.faces().data());
+        //glDrawElements(GL_TRIANGLES, m_mesh.faces().size() * 3, GL_UNSIGNED_INT, m_mesh.faces().data());
+        m_mesh.draw(shader);
+
+//        glm::vec3 vertices[] = {
+//                {-1.f, 1.f, 0.f},
+//                {-1.f, -1.f, 0.f},
+//                {1.f, -1.f, 0.f},
+//                {1.f, 1.f, 0.f}
+//        };
+//
+//        glm::vec2 uv[] = {
+//                {0.0f, 0.0f},
+//                {0.0f, 1.0f},
+//                {1.0f, 1.0f},
+//                {1.0f, 0.0f}
+//        };
+//
+//        uint indices[] = {
+//                0, 1, 3, 3, 1, 2
+//        };
+//
+//        uint texture_vert = shader.attributeLocation("position");
+//        uint texture_uv = shader.attributeLocation("uv");
+//
+//        glEnableVertexAttribArray(texture_vert);
+//        glEnableVertexAttribArray(texture_uv);
+//
+//        uint tvb;
+//        uint tuvb;
+//
+//        glGenBuffers(1, &tvb);
+//        glEnableVertexAttribArray(texture_vert);
+//
+//        glBindBuffer(GL_ARRAY_BUFFER, tvb);
+//        glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec3), vertices, GL_STATIC_DRAW);
+//        glVertexAttribPointer(texture_vert, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+//
+//        glGenBuffers(1, &tuvb);
+//        glEnableVertexAttribArray(texture_uv);
+//
+//        glBindBuffer(GL_ARRAY_BUFFER, tuvb);
+//        glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec2), uv, GL_STATIC_DRAW);
+//        glVertexAttribPointer(texture_uv, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+//
+//        //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, indices);
+//
+//        glDisableVertexAttribArray(texture_vert);
+//        glDisableVertexAttribArray(texture_uv);
+//        glDeleteBuffers(1, &tvb);
+//        glDeleteBuffers(1, &tuvb);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(m_window);
     }
-
-    glDisableVertexAttribArray(position_attribute);
-    glDisableVertexAttribArray(normal_attribute);
-    glDisableVertexAttribArray(color_attribute);
-    glDeleteBuffers(1, &vertexBufferDesc);
-    glDeleteBuffers(1, &normalBufferDesc);
-    glDeleteBuffers(1, &colorBufferDesc);
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
