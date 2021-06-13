@@ -1,0 +1,58 @@
+# Created by Polycam
+# object name: cropped_textured_mesh
+newmtl cropped_textured_mesh_0
+Ka 0.000 0.000 0.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Tr 0.000000
+illum 1
+Ns 1.000000
+map_Kd cropped_textured_mesh_0_NltJtq6N.jpg
+newmtl cropped_textured_mesh_1
+Ka 0.000 0.000 0.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Tr 0.000000
+illum 1
+Ns 1.000000
+map_Kd cropped_textured_mesh_1_NltJtq6N.jpg
+newmtl cropped_textured_mesh_2
+Ka 0.000 0.000 0.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Tr 0.000000
+illum 1
+Ns 1.000000
+map_Kd cropped_textured_mesh_2_NltJtq6N.jpg
+newmtl cropped_textured_mesh_3
+Ka 0.000 0.000 0.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Tr 0.000000
+illum 1
+Ns 1.000000
+map_Kd cropped_textured_mesh_3_NltJtq6N.jpg
+newmtl cropped_textured_mesh_4
+Ka 0.000 0.000 0.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Tr 0.000000
+illum 1
+Ns 1.000000
+map_Kd cropped_textured_mesh_4_NltJtq6N.jpg
+newmtl cropped_textured_mesh_5
+Ka 0.000 0.000 0.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Tr 0.000000
+illum 1
+Ns 1.000000
+map_Kd cropped_textured_mesh_5_NltJtq6N.jpg
+newmtl cropped_textured_mesh_6
+Ka 0.000 0.000 0.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+Tr 0.000000
+illum 1
+Ns 1.000000
+map_Kd cropped_textured_mesh_6_NltJtq6N.jpg

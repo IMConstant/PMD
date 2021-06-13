@@ -41,6 +41,10 @@ namespace gl {
 
             return desc;
         }
+
+        static void free(uint desc) {
+            glDeleteTextures(1, &desc);
+        }
     };
 
 }// namespace gl

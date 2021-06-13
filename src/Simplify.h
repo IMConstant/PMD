@@ -98,8 +98,37 @@ namespace Simplify
     double vertex_error(SymetricMatrix q, double x, double y, double z);
     double calculate_error(int id_v1, int id_v2, vec3f &p_result);
     bool flipped(vec3f p,int i0,int i1,Vertex &v0,Vertex &v1,std::vector<int> &deleted);
-    void update_triangles(int i0,Vertex &v,std::vector<int> &deleted,int &deleted_triangles);
     void update_mesh(int iteration);
+
+
+    // Update triangle connections and edge error after a edge is collapsed
+
+    template <typename T>
+    void update_triangles(Mesh<T> *mesh, int i0,Vertex &v,std::vector<int> &deleted,int &deleted_triangles) {
+        vec3f p;
+
+        for (int k = 0; k < v.tcount; k++) {
+            Ref &r = refs[v.tstart + k];
+            Triangle &t = triangles[r.tid];
+
+            if(t.deleted) continue;
+
+            if(deleted[k]) {
+                t.deleted = 1;
+                deleted_triangles++;
+                continue;
+            }
+
+            t.v[r.tvertex] = i0;
+            memcpy(reinterpret_cast<unsigned char *>(mesh->m_faces.data() + r.tid) + r.tvertex * sizeof(uint), &i0, sizeof(uint));
+            t.dirty = 1;
+            t.err[0] = calculate_error(t.v[0], t.v[1], p);
+            t.err[1] = calculate_error(t.v[1], t.v[2], p);
+            t.err[2] = calculate_error(t.v[2], t.v[0], p);
+            t.err[3] = glm::min(t.err[0], glm::min(t.err[1], t.err[2]));
+            refs.push_back(r);
+        }
+    }
 
     template <typename T>
     void compact_mesh(Mesh<T> *mesh) {
@@ -185,7 +214,7 @@ namespace Simplify
         std::vector<int> deleted0,deleted1;
         int triangle_count = triangles.size();
 
-        loop(iteration,0,10000)
+        loop(iteration,0,1000)
         {
             // target number of triangles reached ? Then break
             printf("iteration %d - triangles %d\n",iteration,triangle_count-deleted_triangles);
@@ -194,6 +223,19 @@ namespace Simplify
             // update mesh once in a while
             if(iteration%1==0)
             {
+                if(iteration > 0) {
+                    int dst = 0;
+
+                    for (int i = 0; i < triangles.size(); i++)
+                        if(!triangles[i].deleted) {
+                            triangles[dst++]=triangles[i];
+
+                            mesh->m_faces.at(dst - 1) = mesh->m_faces.at(i);
+                        }
+
+                    triangles.resize(dst);
+                }
+
                 update_mesh(iteration);
             }
 
@@ -218,7 +260,7 @@ namespace Simplify
                 if(t.deleted) continue;
                 if(t.dirty) continue;
 
-                for (int j = 0; j < 3; j++) if(t.err[j]<threshold)
+                for (int j = 0; j < 3; j++) if(t.err[j] < threshold)
                     {
                         int i0=t.v[ j     ]; Vertex &v0 = vertices[i0];
                         int i1=t.v[(j+1)%3]; Vertex &v1 = vertices[i1];
@@ -239,11 +281,18 @@ namespace Simplify
 
                         // not flipped, so remove edge
                         v0.p = p;
+
+                        auto &_vp0 = mesh->m_vertices.at(i0).components.position;
+                        auto &_vp1 = mesh->m_vertices.at(i1).components.position;
+
+                        mesh->m_vertices.at(i0).components.interpolate(mesh->m_vertices.at(i0).components, mesh->m_vertices.at(i1).components, glm::distance(_vp0, p) / glm::distance(_vp0, _vp1));
+
+                        //mesh->m_vertices.at(i0).components.position = p;
                         v0.q = v1.q + v0.q;
                         int tstart=refs.size();
 
-                        update_triangles(i0,v0,deleted0,deleted_triangles);
-                        update_triangles(i0,v1,deleted1,deleted_triangles);
+                        update_triangles(mesh, i0,v0,deleted0,deleted_triangles);
+                        update_triangles(mesh, i0,v1,deleted1,deleted_triangles);
 
                         int tcount = refs.size() - tstart;
 

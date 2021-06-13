@@ -27,59 +27,40 @@ namespace Simplify {
                 deleted[k]=1;
                 continue;
             }
+
             vec3f d1 = vertices[id1].p-p; d1 = glm::normalize(d1);
             vec3f d2 = vertices[id2].p-p; d2 = glm::normalize(d2);
-            if(fabs(glm::dot<3, float>(d1, d2))>0.999) return true;
+
+            if(fabs(glm::dot<3, float>(d1, d2))>0.999) {
+                return true;
+            }
+
             vec3f n;
             n = glm::cross(d1, d2);
             n = glm::normalize(n);
             deleted[k]=0;
 
-            if(glm::dot<3, float>(n, t.n) < 0.2) return true;
-        }
-        return false;
-    }
-
-    // Update triangle connections and edge error after a edge is collapsed
-
-    void update_triangles(int i0,Vertex &v,std::vector<int> &deleted,int &deleted_triangles) {
-        vec3f p;
-
-        for (int k = 0; k < v.tcount; k++) {
-            Ref &r = refs[v.tstart + k];
-            Triangle &t = triangles[r.tid];
-
-            if(t.deleted) continue;
-
-            if(deleted[k]) {
-                t.deleted = 1;
-                deleted_triangles++;
-                continue;
+            if(glm::dot<3, float>(n, t.n) < 0.2) {
+                return true;
             }
-
-            t.v[r.tvertex] = i0;
-            t.dirty = 1;
-            t.err[0] = calculate_error(t.v[0], t.v[1], p);
-            t.err[1] = calculate_error(t.v[1], t.v[2], p);
-            t.err[2] = calculate_error(t.v[2], t.v[0], p);
-            t.err[3] = glm::min(t.err[0], glm::min(t.err[1], t.err[2]));
-            refs.push_back(r);
         }
+
+        return false;
     }
 
     // compact triangles, compute edge error and build reference list
 
     void update_mesh(int iteration) {
-        if(iteration > 0) {
-            int dst = 0;
-
-            for (int i = 0; i < triangles.size(); i++)
-                if(!triangles[i].deleted) {
-                    triangles[dst++]=triangles[i];
-                }
-
-            triangles.resize(dst);
-        }
+//        if(iteration > 0) {
+//            int dst = 0;
+//
+//            for (int i = 0; i < triangles.size(); i++)
+//                if(!triangles[i].deleted) {
+//                    triangles[dst++]=triangles[i];
+//                }
+//
+//            triangles.resize(dst);
+//        }
         //
         // Init Quadrics by Plane & Edge Errors
         //

@@ -77,7 +77,7 @@ Application::Application() {
 
     imguiInit();
 
-    m_mesh.load_from_file("./models/house/house.obj");
+    m_mesh.load_from_file("./house.obj");
     m_mesh.calculate_normals();
     m_mesh_need_reload = false;
 }
@@ -140,6 +140,11 @@ void Application::run() {
 
     float mesh_area = m_mesh.area();
     float mesh_volume = m_mesh.volume();
+    float prev_mesh_area = 0;
+    float prev_mesh_volume = 0;
+
+    uint prev_mesh_vertices = 0;
+    uint prev_mesh_faces = 0;
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
@@ -151,6 +156,9 @@ void Application::run() {
     glm::vec3 clearColor = {0.1f, 0.1f, 0.1f};
 
     float angle = 0.0f;
+    int render_type = 0;
+    float p_simplify = 0.5f;
+    glm::vec3 light_position{100, 100, 100};
 
     while (!glfwWindowShouldClose(m_window)) {
         glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
@@ -161,6 +169,12 @@ void Application::run() {
             m_mesh.calculate_normals();
 
             m_mesh_need_reload = false;
+
+            prev_mesh_area = 0;
+            prev_mesh_volume = 0;
+
+            mesh_area = m_mesh.area();
+            mesh_volume = m_mesh.volume();
         }
 
         glfwPollEvents();
@@ -170,8 +184,6 @@ void Application::run() {
         ImGui::NewFrame();
 
         {
-            ImGui::ShowDemoWindow();
-
             if (ImGui::BeginMainMenuBar()) {
                 if (ImGui::BeginMenu("File")) {
                     if (ImGui::MenuItem("Open")) {
@@ -195,10 +207,45 @@ void Application::run() {
             ImGui::Begin("MainWindow");
             ImGui::ColorEdit3("clear color", reinterpret_cast<float *>(&clearColor));
             ImGui::SliderFloat3("camera position", reinterpret_cast<float *>(&mMainCamera.position), -20.0f, 20.0f);
-            ImGui::Text("Vertices: %u", m_mesh.vertices().size());
-            ImGui::Text("Faces: %u", m_mesh.faces().size());
-            ImGui::Text("Area: %f", mesh_area);
-            ImGui::Text("Volume: %f", mesh_volume);
+            ImGui::SliderFloat3("light position", reinterpret_cast<float *>(&light_position), -1000.f, 1000.f);
+
+            if (ImGui::Button("Change render type")) {
+                render_type = ++render_type % 4;
+            }
+
+            if (prev_mesh_area != 0.0) {
+                ImGui::Text("Vertices: %u/%u", prev_mesh_vertices, m_mesh.vertices().size());
+                ImGui::Text("Faces: %u/%u", prev_mesh_faces, m_mesh.faces().size());
+
+                ImGui::Text("Area: %f/%f", prev_mesh_area, mesh_area);
+                ImGui::Text("Volume: %f/%f", std::fabs(prev_mesh_volume), std::fabs(mesh_volume));
+            }
+            else {
+                ImGui::Text("Vertices: %u", m_mesh.vertices().size());
+                ImGui::Text("Faces: %u", m_mesh.faces().size());
+
+                ImGui::Text("Area: %f", mesh_area);
+                ImGui::Text("Volume: %f", std::fabs(mesh_volume));
+            }
+
+            if (ImGui::Button("Simplify")) {
+                prev_mesh_vertices = m_mesh.vertices().size();
+                prev_mesh_faces = m_mesh.faces().size();
+
+                auto start = std::chrono::high_resolution_clock::now();
+                m_mesh.simplify(p_simplify);
+                auto end = std::chrono::high_resolution_clock::now();
+
+                std::chrono::duration<float> duration = end - start;
+
+                std::cout << "full duration - " << duration.count() << std::endl;
+
+                prev_mesh_area = mesh_area;
+                prev_mesh_volume = mesh_volume;
+
+                mesh_area = m_mesh.area();
+                mesh_volume = m_mesh.volume();
+            }
 
             ImGui::End();
 
@@ -226,7 +273,7 @@ void Application::run() {
 
         angle += 0.01f;
 
-        glm::mat4 model = glm::translate(model, glm::vec3(0, -13, -197));
+        glm::mat4 model = glm::mat4(1.0);//glm::translate(model, glm::vec3(0, -13, -197));
         //model = glm::rotate(model, angle, glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 view = glm::lookAt(mMainCamera.position, mMainCamera.lookPosition, glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 projection = glm::perspective(glm::radians(90.0f), width / static_cast<float>(height), 0.1f, 10000.0f);
@@ -234,57 +281,10 @@ void Application::run() {
         glm::mat4 model_view_projection = projection * view * model;
 
         glUniformMatrix4fv(glGetUniformLocation(shader.getId(), "u_model_view_projection"), 1, GL_FALSE, glm::value_ptr(model_view_projection));
+        glUniform1i(glGetUniformLocation(shader.getId(), "u_render_type"), render_type);
+        glUniform3fv(glGetUniformLocation(shader.getId(), "u_light_position"), 1, glm::value_ptr(light_position));
 
-        //glDrawElements(GL_TRIANGLES, m_mesh.faces().size() * 3, GL_UNSIGNED_INT, m_mesh.faces().data());
         m_mesh.draw(shader);
-
-//        glm::vec3 vertices[] = {
-//                {-1.f, 1.f, 0.f},
-//                {-1.f, -1.f, 0.f},
-//                {1.f, -1.f, 0.f},
-//                {1.f, 1.f, 0.f}
-//        };
-//
-//        glm::vec2 uv[] = {
-//                {0.0f, 0.0f},
-//                {0.0f, 1.0f},
-//                {1.0f, 1.0f},
-//                {1.0f, 0.0f}
-//        };
-//
-//        uint indices[] = {
-//                0, 1, 3, 3, 1, 2
-//        };
-//
-//        uint texture_vert = shader.attributeLocation("position");
-//        uint texture_uv = shader.attributeLocation("uv");
-//
-//        glEnableVertexAttribArray(texture_vert);
-//        glEnableVertexAttribArray(texture_uv);
-//
-//        uint tvb;
-//        uint tuvb;
-//
-//        glGenBuffers(1, &tvb);
-//        glEnableVertexAttribArray(texture_vert);
-//
-//        glBindBuffer(GL_ARRAY_BUFFER, tvb);
-//        glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec3), vertices, GL_STATIC_DRAW);
-//        glVertexAttribPointer(texture_vert, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-//
-//        glGenBuffers(1, &tuvb);
-//        glEnableVertexAttribArray(texture_uv);
-//
-//        glBindBuffer(GL_ARRAY_BUFFER, tuvb);
-//        glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec2), uv, GL_STATIC_DRAW);
-//        glVertexAttribPointer(texture_uv, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-//
-//        //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, indices);
-//
-//        glDisableVertexAttribArray(texture_vert);
-//        glDisableVertexAttribArray(texture_uv);
-//        glDeleteBuffers(1, &tvb);
-//        glDeleteBuffers(1, &tuvb);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

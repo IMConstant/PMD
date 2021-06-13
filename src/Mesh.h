@@ -25,7 +25,7 @@ T linearInterpolation(const T &v0, const T &v1, float t) {
 
 
 struct VertexComponents {
-    virtual void interpolate(VertexComponents *out, VertexComponents const &v0, VertexComponents const &v1, float t) const = 0;
+    virtual void interpolate(VertexComponents const &v0, VertexComponents const &v1, float t) = 0;
 };
 
 
@@ -33,20 +33,12 @@ struct VertexBaseComponents : public VertexComponents {
     glm::vec3 position;
     glm::vec3 normal;
 
-    void interpolate(VertexComponents *out, VertexComponents const &v0, VertexComponents const &v1, float t) const override {
+    void interpolate(VertexComponents const &v0, VertexComponents const &v1, float t) override {
         auto &_v0 = static_cast<VertexBaseComponents const &>(v0);
         auto &_v1 = static_cast<VertexBaseComponents const &>(v1);
-        auto *_out = static_cast<VertexBaseComponents *>(out);
 
-        _out->position = linearInterpolation(_v0.position, _v1.position, t);
-        _out->normal   = linearInterpolation(_v0.normal,   _v1.normal,   t);
-    }
-};
-
-
-struct UVVertexComponent : public VertexBaseComponents {
-    void interpolate(VertexComponents *out, VertexComponents const &v0, VertexComponents const &v1, float t) const override {
-        VertexBaseComponents::interpolate(out, v0, v1, t);
+        position = linearInterpolation(_v0.position, _v1.position, t);
+        normal   = linearInterpolation(_v0.normal,   _v1.normal,   t);
     }
 };
 
@@ -55,8 +47,14 @@ struct VertexComponentsColored : public VertexBaseComponents {
     glm::vec4 color;
     glm::vec2 uv;
 
-    void interpolate(VertexComponents *out, VertexComponents const &v0, VertexComponents const &v1, float t) const override {
-        VertexBaseComponents::interpolate(out, v0, v1, t);
+    void interpolate(VertexComponents const &v0, VertexComponents const &v1, float t) override {
+        VertexBaseComponents::interpolate(v0, v1, t);
+
+        auto &_v0 = static_cast<VertexComponentsColored const &>(v0);
+        auto &_v1 = static_cast<VertexComponentsColored const &>(v1);
+
+        color = linearInterpolation(_v0.color, _v1.color, t);
+        //uv = linearInterpolation(_v0.uv, _v1.uv, t);
     }
 };
 
@@ -90,11 +88,14 @@ class Mesh;
 
 
 namespace Simplify {
-    template <class T>
-    void simplify_mesh(T *mesh, int target_count, double agressiveness);
+    struct Vertex;
 
     template <class T>
+    void simplify_mesh(T *mesh, int target_count, double agressiveness);
+    template <class T>
     void compact_mesh(T *mesh);
+    template <typename T>
+    void update_triangles(T *mesh, int i0,Vertex &v,std::vector<int> &deleted,int &deleted_triangles);
 }
 
 
@@ -108,9 +109,10 @@ protected:
 public:
     template <class T>
     friend void Simplify::simplify_mesh(Mesh<T> *mesh, int target_count, double agressiveness);
-
     template <class T>
     friend void Simplify::compact_mesh(Mesh<T> *mesh);
+    template <typename T>
+    friend void Simplify::update_triangles(Mesh<T> *mesh, int i0,Vertex &v,std::vector<int> &deleted,int &deleted_triangles);
 
     using VertexType = Vertex<TVertexComponents>;
 
@@ -216,7 +218,7 @@ void Mesh<T>::simplify(float p) {
 
 template <typename T>
 void Mesh<T>::simplify(uint verticesFinalCount) {
-    Simplify::simplify_mesh<T>(this, verticesFinalCount, 4);
+    Simplify::simplify_mesh<T>(this, verticesFinalCount, 7);
 }
 
 #endif //MESHSIMPLIFICATION_MESH_H
